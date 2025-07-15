@@ -1,0 +1,9 @@
+# Node modules
+backend/node_modules/
+
+# Ignore backend environment files
+backend/.env
+backend/.env.*
+
+# Ignore generated Prisma client
+backend/src/generated/prisma
