@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '../generated/prisma';
+import { publishEvent } from '../kafka/producer';
 
 const prisma = new PrismaClient();
 
@@ -29,25 +30,19 @@ export const handleSignup = async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const newUser = await prisma.user.create({
-      data: {
+    await publishEvent('user-events', {
+      type: 'signup',
+      user: {
         username,
         email,
         password_hash: passwordHash,
-      },
+      }
     });
 
-    const token = jwt.sign(
-      { id: newUser.user_id, username: newUser.username, email: newUser.email },
-      process.env.JWT_SECRET!,
-      { expiresIn: '1d' }
-    );
-
-    return res.status(201).json({
-      id: newUser.user_id,
-      username: newUser.username,
-      email: newUser.email,
-      token,
+    return res.status(202).json({
+      message: 'Signup request received',
+      username,
+      email,
     });
   } catch (err) {
     console.error('Signup error:', err);

@@ -12,7 +12,7 @@ export const getUserPosts = async (req: Request, res: Response) => {
 
   try {
     const posts = await prisma.post.findMany({
-      where: { userId },
+      where: { user_id: userId },
       orderBy: { created_at: 'desc' }, // Optional: newest first
     });
 

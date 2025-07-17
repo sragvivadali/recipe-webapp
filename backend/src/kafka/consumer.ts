@@ -1,30 +1,99 @@
-import { Server } from 'socket.io';
-import { getFriends } from '../utils/getFriends';
-import { Recipe } from '../models/Recipe';
+import { Kafka } from 'kafkajs';
+import { PrismaClient } from '@prisma/client';
 
-// In-memory recipe store
-const recipes: Recipe[] = [];
+const kafka = new Kafka({
+  clientId: 'recipe-consumer',
+  brokers: ['localhost:9092'],
+});
 
-export function initKafkaConsumer(io: Server) {
-  const { Kafka } = require('kafkajs');
-  const kafka = new Kafka({ brokers: [process.env.KAFKA_BROKER!] });
-  const consumer = kafka.consumer({ groupId: 'recipe-group' });
+// Separate consumers for different event types
+const userConsumer = kafka.consumer({ groupId: 'user-service' });
+const postConsumer = kafka.consumer({ groupId: 'post-service' });
+const notificationConsumer = kafka.consumer({ groupId: 'notification-service' });
 
-  (async () => {
-    await consumer.connect();
-    await consumer.subscribe({ topic: process.env.KAFKA_TOPIC!, fromBeginning: true });
+const prisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
+  // Add connection pooling
+});
 
-    await consumer.run({
-      eachMessage: async ({ message }: { message: { value: Buffer | null } }) => {
-        const data = JSON.parse(message.value!.toString());
-        const recipe: Recipe = { ...data, createdAt: new Date() };
-        recipes.push(recipe);
-        const friends = await getFriends(data.chef);
-        friends.forEach(fid => io.to(fid).emit('new-recipe', recipe));
+export async function startKafkaConsumer() {
+  await  userConsumer.connect();
+  await postConsumer.connect();
+  await notificationConsumer.connect();
+
+  await userConsumer.subscribe({ topic: 'user-events', fromBeginning: true });
+  await postConsumer.subscribe({ topic: 'post-events', fromBeginning: true });
+  await notificationConsumer.subscribe({ topic: 'notification-events', fromBeginning: true });
+
+  await userConsumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+      const value = message.value?.toString();
+      if (value) {
+        const event = JSON.parse(value);
+        console.log(`[Kafka][${topic}]`, event);
+
+        if (event.type === 'signup') {
+          // Write user to database
+          await prisma.user.create({
+            data: event.user,
+          });
+        }
+
+        if (event.type === 'friend_request') {
+          // Handle friend request
+          await prisma.friendRequest.create({
+            data: event.data,
+          });
+        }
       }
-    });
-  })();
-}
+    },
+  });
 
-// Export recipes for use in endpoints
-export { recipes };
+  await postConsumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+      const value = message.value?.toString();
+      if (value) {
+        const event = JSON.parse(value);
+        console.log(`[Kafka][${topic}]`, event);
+
+        if (event.type === 'create_post') {
+          await prisma.post.create({
+            data: event.post,
+          });
+        }
+
+        if (event.type === 'like_post') {
+          await prisma.like.create({
+            data: event.like,
+          });
+        }
+
+        if (event.type === 'comment') {
+          await prisma.comment.create({
+            data: event.comment,
+          });
+        }
+      }
+    },
+  });
+
+  await notificationConsumer.run({
+    eachMessage: async ({ topic, partition, message }) => {
+      const value = message.value?.toString();
+      if (value) {
+        const event = JSON.parse(value);
+        console.log(`[Kafka][${topic}]`, event);
+
+        if (event.type === 'notification') {
+          await prisma.notification.create({
+            data: event.notification,
+          });
+        }
+      }
+    },
+  });
+}
