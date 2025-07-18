@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '../generated/prisma';
-import { publishEvent } from '../kafka/producer';
+import { PrismaClient } from '../../generated/prisma';
+import { publishEvent } from '../../kafka/producer';
 
 const prisma = new PrismaClient();
 

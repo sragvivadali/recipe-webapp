@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '../generated/prisma';
+import { PrismaClient } from '../../generated/prisma';
 
 const prisma = new PrismaClient();
 
 export const handleLogin = async (req: Request, res: Response) => {
-  const { identifier, password } = req.body; // "identifier" can be email OR username
+  const { identifier, password } = req.body;
 
   if (!identifier || !password) {
     return res.status(400).json({ error: 'Missing fields' });
@@ -15,22 +15,29 @@ export const handleLogin = async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ username: identifier }, { email: identifier.toLowerCase().trim() }],
+        OR: [
+          { username: identifier },
+          { email: identifier.toLowerCase().trim() },
+        ],
       },
     });
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(401).json({ error: 'Invalid credentials' }); // Generic error
     }
 
-    const isValid = await bcrypt.compare(password, user.password_hash);
-    if (!isValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET not set in environment');
     }
 
     const token = jwt.sign(
-      { id: user.user_id, username: user.username, email: user.email },
-      process.env.JWT_SECRET!,
+      {
+        id: user.user_id,
+        username: user.username,
+        email: user.email,
+      },
+      secret,
       { expiresIn: '1d' }
     );
 

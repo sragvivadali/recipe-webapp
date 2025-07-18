@@ -1,7 +1,6 @@
-// routes/auth.ts
 import express from 'express';
-import { handleSignup } from '../handler/handleSignup';
-import { handleLogin } from '../handler/handleLogin';
+import { handleSignup } from '../handler/auth/handleSignup';
+import { handleLogin } from '../handler/auth/handleLogin';
 
 const router = express.Router();
 

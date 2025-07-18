@@ -21,6 +21,9 @@ model User {
 
   followers Follow[] @relation("UserFollowers")
   following Follow[] @relation("UserFollowing")
+
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
 }
 
 model Post {
@@ -32,10 +35,11 @@ model Post {
   instructions  String?
   cuisine       String?
   created_at    DateTime @default(now()) @db.Timestamptz(6)
+  image_url     String?
 
-  user     User      @relation(fields: [user_id], references: [user_id])
-  comments Comment[]
-  likes    Like[]
+  user         User           @relation(fields: [user_id], references: [user_id])
+  comments     Comment[]
+  likes        Like[]
 }
 
 model Comment {
@@ -69,4 +73,17 @@ model Follow {
   followed User @relation("UserFollowers", fields: [followed_id], references: [user_id])
 
   @@id([follower_id, followed_id]) // composite primary key
+}
+
+model FriendRequest {
+  id          String   @id @default(uuid())
+  sender_id   String   @db.Uuid
+  receiver_id String   @db.Uuid
+  status      String   @default("pending") // "pending", "accepted", "declined"
+  created_at  DateTime @default(now())
+
+  sender   User @relation("SentFriendRequests", fields: [sender_id], references: [user_id])
+  receiver User @relation("ReceivedFriendRequests", fields: [receiver_id], references: [user_id])
+
+  @@unique([sender_id, receiver_id])
 }

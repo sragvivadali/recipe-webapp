@@ -2,7 +2,7 @@ import { Kafka } from 'kafkajs';
 
 const kafka = new Kafka({
   clientId: 'recipe-app',
-  brokers: ['localhost:9092'], // or your docker IP
+  brokers: ['localhost:9092'],
 });
 
 export const producer = kafka.producer();

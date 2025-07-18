@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '../generated/prisma';
-import { producer } from '../kafka/producer';
+import { PrismaClient } from '../../generated/prisma';
+import { producer } from '../../kafka/producer';
 
 const prisma = new PrismaClient();
 
@@ -12,9 +12,10 @@ export const createPost = async (req: Request, res: Response) => {
     difficulty,
     instructions,
     cuisine,
+    imageUrl,
   } = req.body;
 
-  if (!userId || !recipeName || !prepTimeMin || !difficulty || !instructions || !cuisine) {
+  if (!userId || !recipeName) {
     return res.status(400).json({ error: 'Missing fields' });
   }
 
@@ -27,6 +28,7 @@ export const createPost = async (req: Request, res: Response) => {
         difficulty,
         instructions,
         cuisine,
+        image_url: imageUrl,
       },
     });
 

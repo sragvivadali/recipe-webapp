@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { PrismaClient } from '../generated/prisma';
-import { publishEvent } from '../kafka/producer';
+import { PrismaClient } from '../../generated/prisma';
+import { publishEvent } from '../../kafka/producer';
 
 const prisma = new PrismaClient();
 
@@ -17,10 +16,7 @@ export const handleSignup = async (req: Request, res: Response) => {
   try {
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [
-          { username },
-          { email },
-        ],
+        OR: [{ username }, { email }],
       },
     });
 
@@ -36,7 +32,7 @@ export const handleSignup = async (req: Request, res: Response) => {
         username,
         email,
         password_hash: passwordHash,
-      }
+      },
     });
 
     return res.status(202).json({
