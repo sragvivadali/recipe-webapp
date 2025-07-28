@@ -24,7 +24,14 @@ model User {
 
   sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
   receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
+
+  blockedUsers Block[] @relation("UserBlocked")
+  Block        Block[]
+
+  friends      Friend[] @relation("UserFriends")  // user -> friend
+  friendOf     Friend[] @relation("FriendOf")     // friend -> user
 }
+
 
 model Post {
   post_id       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -37,9 +44,9 @@ model Post {
   created_at    DateTime @default(now()) @db.Timestamptz(6)
   image_url     String?
 
-  user         User           @relation(fields: [user_id], references: [user_id])
-  comments     Comment[]
-  likes        Like[]
+  user     User      @relation(fields: [user_id], references: [user_id])
+  comments Comment[]
+  likes    Like[]
 }
 
 model Comment {
@@ -86,4 +93,37 @@ model FriendRequest {
   receiver User @relation("ReceivedFriendRequests", fields: [receiver_id], references: [user_id])
 
   @@unique([sender_id, receiver_id])
+}
+
+model Friend {
+  id         String   @id @default(uuid())
+  user_id    String   @db.Uuid
+  friend_id  String   @db.Uuid
+  created_at DateTime @default(now())
+
+  user   User @relation("UserFriends", fields: [user_id], references: [user_id])
+  friend User @relation("FriendOf", fields: [friend_id], references: [user_id])
+
+  @@unique([user_id, friend_id])
+}
+
+
+model Block {
+  blocker_id String   @db.Uuid
+  blocked_id String   @db.Uuid
+  created_at DateTime @default(now())
+
+  blocker User @relation("UserBlocked", fields: [blocker_id], references: [user_id])
+  blocked User @relation(fields: [blocked_id], references: [user_id])
+
+  @@id([blocker_id, blocked_id])
+}
+
+model Outbox {
+  id         String   @id @default(uuid())
+  event_type String
+  payload    Json
+  status     String   @default("pending") // "pending", "sent", "failed"
+  created_at DateTime @default(now())
+  sent_at    DateTime?
 }

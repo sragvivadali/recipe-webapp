@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '../../generated/prisma';
-import { publishEvent } from '../../kafka/producer';
 
 const prisma = new PrismaClient();
 
@@ -12,16 +11,25 @@ export const likePost = async (req: Request, res: Response) => {
   }
 
   try {
-    const like = await prisma.like.create({
-      data: { user_id: userId, post_id: postId },
+    const result = await prisma.$transaction(async (tx) => {
+      const like = await tx.like.create({
+        data: { user_id: userId, post_id: postId },
+      });
+
+      await tx.outbox.create({
+        data: {
+          event_type: 'like-created',
+          payload: {
+            type: 'NEW_LIKE',
+            data: like,
+          },
+        },
+      });
+
+      return like;
     });
 
-    await publishEvent('like-events', {
-      type: 'NEW_LIKE',
-      data: like,
-    });
-
-    return res.status(201).json(like);
+    return res.status(201).json(result);
   } catch (err) {
     console.error('Error liking post:', err);
     return res.status(500).json({ error: 'Server error' });

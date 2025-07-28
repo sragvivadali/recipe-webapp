@@ -1,7 +1,7 @@
 import { Kafka } from 'kafkajs';
 import { startUserConsumer } from './consumers/userConsumer';
 import { startPostConsumer } from './consumers/postConsumer';
-import { startNotificationConsumer } from './consumers/notificationConsumer';
+import { startFriendsConsumer } from './consumers/friendsConsumer';
 
 const kafka = new Kafka({
   clientId: 'recipe-app',
@@ -10,6 +10,6 @@ const kafka = new Kafka({
 
 export async function startKafkaConsumer() {
   await startUserConsumer(kafka);
+  await startFriendsConsumer(kafka);
   await startPostConsumer(kafka);
-  await startNotificationConsumer(kafka);
 }

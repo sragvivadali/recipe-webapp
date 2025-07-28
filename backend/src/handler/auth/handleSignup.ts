@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { PrismaClient } from '../../generated/prisma';
-import { publishEvent } from '../../kafka/producer';
 
 const prisma = new PrismaClient();
 
@@ -26,19 +25,40 @@ export const handleSignup = async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    await publishEvent('user-events', {
-      type: 'signup',
-      user: {
-        username,
-        email,
-        password_hash: passwordHash,
-      },
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          username,
+          email,
+          password_hash: passwordHash,
+        },
+      });
+
+      await tx.outbox.create({
+        data: {
+          event_type: 'user-created',
+          payload: {
+            type: 'signup',
+            user: {
+              user_id: user.user_id,
+              username: user.username,
+              email: user.email,
+              created_at: user.created_at,
+            },
+          },
+        },
+      });
+
+      return user;
     });
 
-    return res.status(202).json({
-      message: 'Signup request received',
-      username,
-      email,
+    return res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        user_id: result.user_id,
+        username: result.username,
+        email: result.email,
+      },
     });
   } catch (err) {
     console.error('Signup error:', err);

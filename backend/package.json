@@ -5,7 +5,19 @@
   "scripts": {
     "dev": "ts-node src/index.ts",
     "start": "node dist/index.js",
-    "build": "tsc"
+    "build": "tsc",
+    "outbox:dev": "ts-node src/kafka/outboxProcessor.ts",
+    "outbox:start": "node dist/kafka/outboxProcessor.js",
+    "outbox:build": "tsc src/kafka/outboxProcessor.ts --outDir dist",
+    "outbox:status": "ts-node src/utils/outboxMonitor.ts",
+    "outbox:retry": "ts-node -e \"require('./src/utils/outboxMonitor').retryFailedEvents().then(console.log)\"",
+    "outbox:cleanup": "ts-node -e \"require('./src/utils/outboxMonitor').cleanupOldSentEvents().then(console.log)\"",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop ecosystem.config.js",
+    "pm2:restart": "pm2 restart ecosystem.config.js",
+    "pm2:delete": "pm2 delete ecosystem.config.js",
+    "pm2:logs": "pm2 logs",
+    "pm2:status": "pm2 status"
   },
   "dependencies": {
     "@clickhouse/client": "^1.11.2",
@@ -19,6 +31,7 @@
     "kafkajs": "^2.2.4",
     "pg": "^8.11.3",
     "pg-hstore": "^2.3.4",
+    "pm2": "^5.4.3",
     "sequelize": "^6.35.2",
     "socket.io": "^4.7.5",
     "uuid": "^11.1.0"

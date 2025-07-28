@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '../../generated/prisma';
-import { producer } from '../../kafka/producer';
+import { createOutboxEvent, outboxEvents } from '../../utils/outbox';
 
 const prisma = new PrismaClient();
 
@@ -20,36 +20,25 @@ export const createPost = async (req: Request, res: Response) => {
   }
 
   try {
-    const post = await prisma.post.create({
-      data: {
-        user_id: userId,
-        recipe_name: recipeName,
-        prep_time_min: prepTimeMin,
-        difficulty,
-        instructions,
-        cuisine,
-        image_url: imageUrl,
-      },
-    });
-
-    // Produce Kafka event
-    await producer.send({
-      topic: 'post-created',
-      messages: [
-        {
-          key: post.post_id,
-          value: JSON.stringify({
-            post_id: post.post_id,
-            user_id: post.user_id,
-            recipeName: post.recipe_name,
-            cuisine: post.cuisine,
-            created_at: post.created_at,
-          }),
+    const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.create({
+        data: {
+          user_id: userId,
+          recipe_name: recipeName,
+          prep_time_min: prepTimeMin,
+          difficulty,
+          instructions,
+          cuisine,
+          image_url: imageUrl,
         },
-      ],
+      });
+
+      await createOutboxEvent(tx, outboxEvents.postCreated(post));
+
+      return post;
     });
 
-    return res.status(201).json({ message: 'Post created', post });
+    return res.status(201).json({ message: 'Post created', post: result });
   } catch (err) {
     console.error('Post creation error:', err);
     return res.status(500).json({ error: 'Server error' });

@@ -7,9 +7,9 @@ import { createComment } from '../handler/posts/createComment';
 
 const router = express.Router();
 
-router.post('/', authenticate, createPost); // POST /posts
+router.post('/', createPost); // POST /posts
 router.get('/:userId', authenticate, getUserPosts); // GET /posts/:userId
 router.post('/:postId/like', authenticate, likePost); // POST /posts/:postId/like
-router.post('/:postId/comment', authenticate, createComment); // POST /posts/:postId/comment
+router.post('/:postId/comment', createComment); // POST /posts/:postId/comment
 
 export default router;
